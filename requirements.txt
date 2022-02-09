@@ -2,7 +2,7 @@
 # The Python Worker is managed by Azure Functions platform
 # Manually managing azure-functions-worker may cause unexpected issues
 
-azure-functions
-azure-identity
-azure-keyvault-secrets
-azure-devops
+azure-devops==6.0.0b4
+azure-functions==1.8.0
+azure-identity==1.7.1
+azure-keyvault-secrets==4.3.0
