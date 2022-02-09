@@ -1,7 +1,7 @@
-import datetime
 import logging
 
 import azure.functions as func
+
 try:
     from azure.identity import DefaultAzureCredential
     from azure.keyvault.secrets import SecretClient
@@ -9,12 +9,13 @@ try:
     from azure.devops.v5_1.work_item_tracking.models import Wiql
     from azure.devops.connection import Connection
     from msrest.authentication import BasicAuthentication
-except Exception:
-    logging.exception("can't really import stuff")
+except ImportError:
+    logging.exception("Missing dependencies, can't complete import")
 
 
 def get_items(client):
-    wiql = Wiql(query="""
+    wiql = Wiql(
+        query="""
      SELECT
         [System.Id],
         [System.WorkItemType],
@@ -28,20 +29,30 @@ def get_items(client):
         AND [System.State] = 'In Progress'
         AND [System.AssignedTo] = 'Alfredo Deza <alfredodeza@microsoft.com>'
         AND NOT [Custom.TrackingCode] CONTAINS 'academic'
-    """)
+    """
+    )
     # restrict result to 10 items
     return client.query_by_wiql(wiql, top=10).work_items
+
 
 def update_items(items, client):
     for item in items:
         logging.info(f"updating item {item} with id {item.id}")
         client.update_work_item(
-            [JsonPatchOperation(op="add", path="/fields/Custom.TrackingCode", value=f"/?WT.mc_id=academic-{item.id}-alfredodeza"),
-            JsonPatchOperation(op="add", path="/fields/Custom.ApprovedforReuse", value="Yes"),
+            [
+                JsonPatchOperation(
+                    op="add",
+                    path="/fields/Custom.TrackingCode",
+                    value=f"/?WT.mc_id=academic-{item.id}-alfredodeza",
+                ),
+                JsonPatchOperation(
+                    op="add", path="/fields/Custom.ApprovedforReuse", value="Yes"
+                ),
             ],
-            item.id
+            item.id,
         )
-        
+
+
 def get_token():
     try:
         credential = DefaultAzureCredential()
@@ -50,8 +61,7 @@ def get_token():
 
     try:
         client = SecretClient(
-            vault_url="https://ado-automate.vault.azure.net",
-            credential=credential
+            vault_url="https://ado-automate.vault.azure.net", credential=credential
         )
 
         token = client.get_secret("ado-token")
@@ -62,14 +72,14 @@ def get_token():
 
 def main(mytimer: func.TimerRequest) -> None:
     token = get_token()
-    organization_url = 'https://dev.azure.com/devrel'
-    credentials = BasicAuthentication('alfredodeza', token)
+    organization_url = "https://dev.azure.com/devrel"
+    credentials = BasicAuthentication("alfredodeza", token)
     connection = Connection(base_url=organization_url, creds=credentials)
     logging.info("created connection object")
     try:
         item_client = connection.clients.get_work_item_tracking_client()
+        logging.info("created a work item client")
     except Exception:
         logging.exception("unable to create the work item client")
-    logging.info("created a work item client")
     items = get_items(item_client)
     update_items(items, item_client)
