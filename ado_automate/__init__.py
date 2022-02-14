@@ -58,6 +58,7 @@ def get_token():
         credential = DefaultAzureCredential()
     except Exception:
         logging.exception("couldn't get credentials initialized")
+        raise
 
     try:
         client = SecretClient(
@@ -68,6 +69,7 @@ def get_token():
         return token.value
     except Exception:
         logging.exception("Couldn't init the secret client")
+        raise
 
 
 def main(mytimer: func.TimerRequest) -> None:
