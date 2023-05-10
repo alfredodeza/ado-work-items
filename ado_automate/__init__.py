@@ -12,10 +12,14 @@ try:
 except ImportError:
     logging.exception("Missing dependencies, can't complete import")
 
+users = [
+    ("alfredodeza", "Alfredo Deza <alfredodeza@microsoft.com>"),
+    ("cyzanon", "Cynthia Zanoni <cyzanon@microsoft.com>")
+]
 
-def get_items(client):
+def get_items(client, user):
     wiql = Wiql(
-        query="""
+        query=f"""
      SELECT
         [System.Id],
         [System.WorkItemType],
@@ -27,7 +31,7 @@ def get_items(client):
     WHERE
         [System.WorkItemType] = 'Content'
         AND [System.State] = 'In Progress'
-        AND [System.AssignedTo] = 'Alfredo Deza <alfredodeza@microsoft.com>'
+        AND [System.AssignedTo] = '{user}'
         AND NOT [Custom.TrackingCode] CONTAINS 'academic'
     """
     )
@@ -35,7 +39,7 @@ def get_items(client):
     return client.query_by_wiql(wiql, top=10).work_items
 
 
-def update_items(items, client):
+def update_items(items, client, username):
     for item in items:
         logging.info(f"updating item {item} with id {item.id}")
         client.update_work_item(
@@ -43,7 +47,7 @@ def update_items(items, client):
                 JsonPatchOperation(
                     op="add",
                     path="/fields/Custom.TrackingCode",
-                    value=f"/?WT.mc_id=academic-{item.id}-alfredodeza",
+                    value=f"/?WT.mc_id=academic-{item.id}-{username}}",
                 ),
                 JsonPatchOperation(
                     op="add", path="/fields/Custom.ApprovedforReuse", value="Yes"
@@ -83,5 +87,7 @@ def main(mytimer: func.TimerRequest) -> None:
         logging.info("created a work item client")
     except Exception:
         logging.exception("unable to create the work item client")
-    items = get_items(item_client)
-    update_items(items, item_client)
+    
+    for username, user in users:
+        items = get_items(item_client, user)
+        update_items(items, item_client, username)
